@@ -99,11 +99,11 @@ class SemaforoData
     int Elem;      
     int InicioPatron;  
     int* patronSemaforo;
-    SemaforoData() : ubicacionFila(0), ubicacionColumna(0), Elem(0), InicioPatron(0), patronSemaforo(nullptr) {}
+    SemaforoData() : ubicacionFila(0), ubicacionColumna(0), Elem(0), InicioPatron(0), patronSemaforo(NULL) {}
     ~SemaforoData() {
-        if (patronSemaforo != nullptr) {
+        if (patronSemaforo != NULL) {
             delete[] patronSemaforo;
-            patronSemaforo = nullptr;
+            patronSemaforo = NULL;
         }
     }
     SemaforoData(const SemaforoData&) = delete;
@@ -112,18 +112,16 @@ class SemaforoData
 
 class Edificio {
 public:
-    int coordenadas[2];
-    char nomenclatura;
-
-    Edificio(int x, int y) : nomenclatura('E') {
-        coordenadas[0] = x;
-        coordenadas[1] = y;
-    }
-
-    void mostrarInfo() const {
-        cout << nomenclatura << " ";
-    }
+    int row; 
+    int col;
+    Edificio(int r = 0, int c = 0) : row(r), col(c) {}
 };
+bool esEdificio(int fila, int columna, Edificio* listaEdificios, int numeroEdificios) {
+    for (int e = 0; e < numeroEdificios; ++e)
+        if (listaEdificios[e].row == fila && listaEdificios[e].col == columna)
+            return true;
+    return false;
+}
 
 class Calle {
 public:
@@ -155,6 +153,8 @@ int main(int argc, char* argv[]) {
         FileMap >> sizeFilas;
         FileMap >> sizesColumnas;
         FileMap >> tiempo;
+        int numeroEdificios = 0;
+        Edificio* listaEdificios = NULL;
         char** a = new char*[sizeFilas];
         for (int row = 0; row < sizeFilas; ++row){
         a[row] = new char[sizesColumnas];
@@ -164,7 +164,22 @@ int main(int argc, char* argv[]) {
             FileMap >> a[row][col];
         }
     }
-    FileMap.close();
+
+        for (int i = 0; i < sizeFilas; ++i)
+            for (int j = 0; j < sizesColumnas; ++j)
+                if (a[i][j] == 'E')
+                    ++numeroEdificios;
+
+        listaEdificios = new Edificio[numeroEdificios];
+        int indiceEdificio = 0;
+        for (int i = 0; i < sizeFilas; ++i) {
+        for (int j = 0; j < sizesColumnas; ++j) {
+        if (a[i][j] == 'E') {
+            listaEdificios[indiceEdificio++] = Edificio(i, j);
+        }
+    }
+}
+FileMap.close();
 
     ifstream SemaforosCont(argv[2]);
     int numeroSemaforos = 0;
@@ -336,6 +351,19 @@ int main(int argc, char* argv[]) {
                 autoPtr->prev_col = autoPtr->col;
                 autoPtr->intended_row = autoPtr->row;
                 autoPtr->intended_col = autoPtr->col;
+                
+                // --- INICIO: impedir paso sobre edificio (Auto) ---
+                int filaDestinoA = autoPtr->row;
+                int colDestinoA  = autoPtr->col + (autoPtr->direccion == 0 ? -1 : +1);
+                if (esEdificio(filaDestinoA, colDestinoA, listaEdificios, numeroEdificios)) {
+                    autoPtr->direccion = 1 - autoPtr->direccion;
+                    autoPtr->cambiosDireccion++;
+                    autoPtr->tiempoEspera++;
+                    continue;
+                }
+// --- FIN: impedir paso sobre edificio (Auto) ---
+
+                
 
                 if (semaforo.isGreen) { // Solo se mueven si el semáforo está en verde
                     if (autoPtr->direccion == 0) { // Mover a la izquierda
@@ -524,5 +552,6 @@ int main(int argc, char* argv[]) {
         }
         statsoutFile << endl;
     }
+
     return 0;
 }
